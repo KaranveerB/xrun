@@ -1,11 +1,11 @@
 mod command_parser;
 
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 use command_parser::{get_command, CommandParseError};
 
 fn main() -> Result<(), CommandParseError> {
-    let path = "tests/res/basic.toml";
+    let path = Path::new("tests/res/basic.toml");
     let command = "subcommand1 command1";
     let exec_command = get_command(path, command)?;
     let command_output = Command::new("sh").arg("-c").arg(exec_command).output()?;

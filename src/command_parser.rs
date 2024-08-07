@@ -1,4 +1,4 @@
-use std::{fs, io};
+use std::{fs, io, path::Path};
 use toml::{self, Table, Value};
 
 #[derive(Debug)]
@@ -67,7 +67,7 @@ pub(crate) fn toml_to_map(
 /// * `command` - The specified command to retrieve the action of.
 ///
 /// returns - The command action if the command is present, or the error that occured while retrieving the command action.
-pub(crate) fn get_command(path: &str, command: &str) -> Result<String, CommandParseError> {
+pub(crate) fn get_command(path: &Path, command: &str) -> Result<String, CommandParseError> {
     let toml_str = &fs::read_to_string(path)?;
     let mut toml_data = toml_to_map(toml_str)?;
     let mut command_not_found = false;
