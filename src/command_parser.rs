@@ -53,7 +53,7 @@ impl From<toml::de::Error> for CommandParseError {
 ///
 /// * `toml_str` - The toml to parse.
 ///
-/// returns - The loaded key-value table.
+/// returns - The loaded key-value table or CommandParseError::TomlDeError.
 pub(crate) fn toml_to_map(
     toml_str: &str,
 ) -> Result<toml::map::Map<String, toml::Value>, CommandParseError> {
