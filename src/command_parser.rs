@@ -49,27 +49,27 @@ impl From<toml::de::Error> for CommandParseError {
     }
 }
 
-/// Reads from a .toml file and returns the table.
+/// Creates of a table of the `toml_str` toml data.
 ///
-/// * `path` - The path to the .toml file to read.
+/// * `toml_str` - The toml to parse.
 ///
-/// returns - The laoded key-value table.
-pub(crate) fn read_toml_to_map(
-    path: &str,
+/// returns - The loaded key-value table.
+pub(crate) fn toml_to_map(
+    toml_str: &str,
 ) -> Result<toml::map::Map<String, toml::Value>, CommandParseError> {
-    let toml_str = fs::read_to_string(path)?;
     let toml_data: Table = toml::from_str(&toml_str)?;
     Ok(toml_data)
 }
 
 /// Parses a .toml file and extracts the action of a specified command.
 ///
-/// * `path` - The path to the base .toml file to read command data from.
+/// * `path` - The path to the .toml file of the base command file.
 /// * `command` - The specified command to retrieve the action of.
 ///
 /// returns - The command action if the command is present, or the error that occured while retrieving the command action.
 pub(crate) fn get_command(path: &str, command: &str) -> Result<String, CommandParseError> {
-    let mut toml_data = read_toml_to_map(path)?;
+    let toml_str = &fs::read_to_string(path)?;
+    let mut toml_data = toml_to_map(toml_str)?;
     let mut command_not_found = false;
     let mut error_string: String = Default::default();
     for token in command.split_whitespace() {
