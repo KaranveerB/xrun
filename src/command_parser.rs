@@ -1,8 +1,49 @@
 use std::{fs, io, path::Path};
 use toml::{self, Table, Value};
 
+/// Reason why a toml key/value is considered contextually invalid during command parsing.
 #[derive(Debug)]
+pub(crate) enum InvalidContentReason {
+    /// Expected a toml string but got something else.
+    ///
+    /// * `String` - The key which is not a table.
+    /// * `Value` - The actual value received.
+    NotTomlString(String, Value),
+    /// Expected a toml table but got something else.
+    ///
+    /// * `String` - The key which is not a table.
+    /// * `Value` - The actual value received.
+    NotTomlTable(String, Value),
+    /// A key, such as 'command' is not present when it was expected to be.
+    ///
+    /// * `String` - The expected key that is not present.
+    MissingKey(String),
+}
+
+impl std::error::Error for InvalidContentReason {}
+
+impl std::fmt::Display for InvalidContentReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InvalidContentReason::NotTomlString(component, value) => write!(
+                f,
+                "Expected key {} to be a string but got {:?}",
+                component, value
+            ),
+            InvalidContentReason::NotTomlTable(component, value) => write!(
+                f,
+                "Expected key {} to be a table but got {:?}",
+                component, value
+            ),
+            InvalidContentReason::MissingKey(key) => {
+                write!(f, "Expected key '{}' but it is not present", key)
+            }
+        }
+    }
+}
+
 /// Errors when parsing and searching for commands from the config.
+#[derive(Debug)]
 pub(crate) enum CommandParseError {
     /// Wrapper for `io::Error`
     IoError(io::Error),
@@ -12,12 +53,9 @@ pub(crate) enum CommandParseError {
     ///
     /// * `String` - The component of the command that is not found.
     CommandNotFoundError(String),
-    // An error for when an entry for the command/subcommand is found, but the
-    // contents are not valid for command parsing.
-    //
-    // * `String` The invalid component of the command.
-    // * `String` The reason the component of the command is invalid.
-    CommandContentInvalid(String, String),
+    ///
+    /// An error for when an entry is present, but there is no valid execution.
+    CommandContentInvalid(InvalidContentReason),
 }
 
 impl std::fmt::Display for CommandParseError {
@@ -26,10 +64,10 @@ impl std::fmt::Display for CommandParseError {
             CommandParseError::IoError(err) => write!(f, "{}", err),
             CommandParseError::TomlDeError(err) => write!(f, "TOML parse error: {}", err),
             CommandParseError::CommandNotFoundError(err) => {
-                write!(f, "Command not found - Missing component: {}", err)
+                write!(f, "Command not found: Missing component: {}", err)
             }
-            CommandParseError::CommandContentInvalid(command, reason) => {
-                write!(f, "Command content invalid - {}: {}", command, reason)
+            CommandParseError::CommandContentInvalid(err) => {
+                write!(f, "Command content invalid: {}", err)
             }
         }
     }
@@ -49,11 +87,17 @@ impl From<toml::de::Error> for CommandParseError {
     }
 }
 
+impl From<InvalidContentReason> for CommandParseError {
+    fn from(err: InvalidContentReason) -> Self {
+        CommandParseError::CommandContentInvalid(err)
+    }
+}
+
 /// Creates of a table of the `toml_str` toml data.
 ///
 /// * `toml_str` - The toml to parse.
 ///
-/// returns - The loaded key-value table or CommandParseError::TomlDeError.
+/// returns - The loaded key-value table or `CommandParseError::TomlDeError`.
 pub(crate) fn toml_to_map(
     toml_str: &str,
 ) -> Result<toml::map::Map<String, toml::Value>, CommandParseError> {
@@ -78,10 +122,9 @@ pub(crate) fn get_command(path: &Path, command: &str) -> Result<String, CommandP
                 Some(Value::Table(next_table)) => {
                     toml_data = next_table.to_owned();
                 }
-                Some(_) => {
+                Some(value) => {
                     return Err(CommandParseError::CommandContentInvalid(
-                        token.to_owned(),
-                        "".to_string(),
+                        InvalidContentReason::NotTomlTable(token.to_owned(), value.to_owned()),
                     ));
                 }
                 None => {
@@ -101,14 +144,153 @@ pub(crate) fn get_command(path: &Path, command: &str) -> Result<String, CommandP
             Some(exec_cmd) => match exec_cmd.as_str() {
                 Some(exec_cmd) => Ok(exec_cmd.to_string()),
                 None => Err(CommandParseError::CommandContentInvalid(
-                    command.to_owned(),
-                    "`command` value is not a string".to_string(),
+                    InvalidContentReason::NotTomlString("command".to_string(), exec_cmd.to_owned()),
                 )),
             },
             None => Err(CommandParseError::CommandContentInvalid(
-                command.to_owned(),
-                "`command` key/value not found".to_string(),
+                InvalidContentReason::MissingKey("command".to_string()),
             )),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use io::Write;
+
+    use tempfile::NamedTempFile;
+    use test_case::test_case;
+
+    use super::*;
+
+    const TOML_COMMAND_DATA: &[u8] = r#"
+            [foo]
+            bar = { command = "bar exec" }
+            qux = "quux"
+            command = { }
+            [baz]
+        "#
+    .as_bytes();
+
+    #[test]
+    fn test_toml_to_map_invalid() {
+        let toml_str = "invalid toml";
+        let result = toml_to_map(toml_str);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CommandParseError::TomlDeError(_) => {}
+            err => panic!("Expected CommandParseError::TomlDeError, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_get_command_valid() {
+        let temp_file = NamedTempFile::new().unwrap();
+        temp_file
+            .reopen()
+            .unwrap()
+            .write_all(TOML_COMMAND_DATA)
+            .unwrap();
+        let result = get_command(temp_file.path(), "foo bar");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "bar exec")
+    }
+
+    #[test_case("bar",  "bar"  ; "skipped subcommand")]
+    #[test_case("foo baz",  "baz"  ; "bad command child of valid subcommand")]
+    #[test_case("foo bar baz",  "baz"  ; "bad command child of valid command")]
+    #[test_case("foo bar baz qux quux",  "baz qux quux"  ; "bad command with multiple invalid component")]
+    fn test_get_command_no_command(cmd_str: &str, invalid_portion: &str) {
+        let temp_file = NamedTempFile::new().unwrap();
+        temp_file
+            .reopen()
+            .unwrap()
+            .write_all(TOML_COMMAND_DATA)
+            .unwrap();
+        let result = get_command(temp_file.path(), cmd_str);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CommandParseError::CommandNotFoundError(s) => assert_eq!(s, invalid_portion),
+            err => panic!(
+                "Expected `CommandParseError::CommandNotFoundError`, got {:?}",
+                err
+            ),
+        }
+    }
+
+    #[test]
+    fn test_get_command_empty_command() {
+        let temp_file = NamedTempFile::new().unwrap();
+        temp_file
+            .reopen()
+            .unwrap()
+            .write_all(TOML_COMMAND_DATA)
+            .unwrap();
+        let result = get_command(temp_file.path(), "baz");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CommandParseError::CommandContentInvalid(InvalidContentReason::MissingKey(key)) => {
+                assert_eq!(key, "command")
+            }
+            err => panic!(
+                "Expected `CommandParseError::CommandNotFoundError`, got {:?}",
+                err
+            ),
+        }
+    }
+
+    #[test]
+    fn test_get_command_not_table() {
+        let temp_file = NamedTempFile::new().unwrap();
+        temp_file
+            .reopen()
+            .unwrap()
+            .write_all(TOML_COMMAND_DATA)
+            .unwrap();
+        let result = get_command(temp_file.path(), "foo qux");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CommandParseError::CommandContentInvalid(InvalidContentReason::NotTomlTable(
+                key,
+                value,
+            )) => {
+                assert_eq!(key, "qux");
+                if let Value::String(_) = value {
+                } else {
+                    panic!("Expected a `Value::Table` but got {}", value)
+                }
+            }
+            err => panic!(
+                "Expected wrapped `InvalidContentReason::NotTomlTable`, but got {:?}",
+                err
+            ),
+        }
+    }
+
+    #[test]
+    fn test_get_command_not_string() {
+        let temp_file = NamedTempFile::new().unwrap();
+        temp_file
+            .reopen()
+            .unwrap()
+            .write_all(TOML_COMMAND_DATA)
+            .unwrap();
+        let result = get_command(temp_file.path(), "foo");
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CommandParseError::CommandContentInvalid(InvalidContentReason::NotTomlString(
+                key,
+                value,
+            )) => {
+                assert_eq!(key, "command");
+                if let Value::String(_) = value {
+                    panic!("Expected a `Value::String` but got {}", value)
+                }
+            }
+            err => panic!(
+                "Expected wrapped `InvalidContentReason::NotTomlString`, but got {:?}",
+                err
+            ),
         }
     }
 }
