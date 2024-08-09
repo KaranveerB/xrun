@@ -4,23 +4,28 @@ use std::{env, path::Path, process::Command};
 
 use command_parser::{get_command, CommandParseError};
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().skip(1).collect();
 
     let command: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     if command.is_empty() {
-        eprintln!("No command provided");
+        eprintln!("Error: No command provided");
         std::process::exit(1);
     }
-    if let Err(err) = command_runner(command) {
-        eprintln!("{}", err);
-        std::process::exit(1);
-    }
-    std::process::exit(0);
+
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("srun")?;
+    let path: std::path::PathBuf = xdg_dirs
+        .find_config_file("command.toml")
+        .unwrap_or_else(|| {
+            eprintln!("Error: command.toml does not exist in config directory");
+            std::process::exit(1);
+        });
+    let path: &Path = path.as_path();
+    command_runner(path, command)?;
+    Ok(())
 }
 
-fn command_runner(command: Vec<&str>) -> Result<(), CommandParseError> {
-    let path = Path::new("tests/res/basic.toml");
+fn command_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseError> {
     let exec_command = get_command(path, command)?;
     let command_output = Command::new("sh").arg("-c").arg(exec_command).output()?;
     if command_output.status.success() {
