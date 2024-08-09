@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         });
     let path: &Path = path.as_path();
-    command_runner(path, command)?;
+    command_runner(path, command).or_disp_and_die();
     Ok(())
 }
 
@@ -33,4 +33,22 @@ fn command_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseErr
         print!("{}", stdout);
     }
     Ok(())
+}
+
+trait OrDispAndDie<T, F> {
+    fn or_disp_and_die(self) -> T
+    where
+        F: std::fmt::Display;
+}
+
+impl<T, F> OrDispAndDie<T, F> for Result<T, F>
+where
+    F: std::fmt::Display,
+{
+    fn or_disp_and_die(self) -> T {
+        self.unwrap_or_else(|err| {
+            eprintln!("Error: {}", err); // Print the error message to stderr
+            std::process::exit(1); // Exit the program with status code 1
+        })
+    }
 }

@@ -20,6 +20,19 @@ pub(crate) enum InvalidContentReason {
     MissingKey(String),
 }
 
+/// Gets a string representation of the type (actually enum value) of the Value.
+fn value_as_name(value: &Value) -> &'static str {
+    match value {
+        Value::String(_) => "String",
+        Value::Integer(_) => "Integer",
+        Value::Float(_) => "Float",
+        Value::Boolean(_) => "Boolean",
+        Value::Datetime(_) => "Datetime",
+        Value::Array(_) => "Array",
+        Value::Table(_) => "Table",
+    }
+}
+
 impl std::error::Error for InvalidContentReason {}
 
 impl std::fmt::Display for InvalidContentReason {
@@ -27,13 +40,15 @@ impl std::fmt::Display for InvalidContentReason {
         match self {
             InvalidContentReason::NotTomlString(component, value) => write!(
                 f,
-                "Expected key {} to be a string but got {:?}",
-                component, value
+                "Expected key '{}' to be String but got {}",
+                component,
+                value_as_name(value)
             ),
             InvalidContentReason::NotTomlTable(component, value) => write!(
                 f,
-                "Expected key {} to be a table but got {:?}",
-                component, value
+                "Expected key '{}' to be Table but got {}",
+                component,
+                value_as_name(value)
             ),
             InvalidContentReason::MissingKey(key) => {
                 write!(f, "Expected key '{}' but it is not present", key)
@@ -62,12 +77,12 @@ impl std::fmt::Display for CommandParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CommandParseError::IoError(err) => write!(f, "{}", err),
-            CommandParseError::TomlDeError(err) => write!(f, "TOML parse error: {}", err),
+            CommandParseError::TomlDeError(err) => write!(f, "TOML parse error - {}", err),
             CommandParseError::CommandNotFoundError(err) => {
-                write!(f, "Command not found: Missing component: {}", err)
+                write!(f, "Command `{}` not found)", err)
             }
             CommandParseError::CommandContentInvalid(err) => {
-                write!(f, "Command content invalid: {}", err)
+                write!(f, "Command content invalid - {}", err)
             }
         }
     }
