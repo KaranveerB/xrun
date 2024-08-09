@@ -111,12 +111,12 @@ pub(crate) fn toml_to_map(
 /// * `command` - The specified command to retrieve the action of.
 ///
 /// returns - The command action if the command is present, or the error that occurred while retrieving the command action.
-pub(crate) fn get_command(path: &Path, command: &str) -> Result<String, CommandParseError> {
+pub(crate) fn get_command(path: &Path, command: Vec<&str>) -> Result<String, CommandParseError> {
     let toml_str = &fs::read_to_string(path)?;
     let mut toml_data = toml_to_map(toml_str)?;
     let mut command_not_found = false;
     let mut error_string: String = Default::default();
-    for token in command.split_whitespace() {
+    for token in command {
         if !command_not_found {
             match toml_data.get(token) {
                 Some(Value::Table(next_table)) => {
@@ -129,7 +129,7 @@ pub(crate) fn get_command(path: &Path, command: &str) -> Result<String, CommandP
                 }
                 None => {
                     command_not_found = true;
-                    error_string += token;
+                    error_string += &token;
                 }
             }
         } else {
@@ -191,7 +191,7 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), "foo bar");
+        let result = get_command(temp_file.path(), "foo bar".split_whitespace().collect());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "bar exec")
     }
@@ -207,7 +207,7 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), cmd_str);
+        let result = get_command(temp_file.path(), cmd_str.split_whitespace().collect());
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandNotFoundError(s) => assert_eq!(s, invalid_portion),
@@ -226,7 +226,7 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), "baz");
+        let result = get_command(temp_file.path(), vec!["baz"]);
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandContentInvalid(InvalidContentReason::MissingKey(key)) => {
@@ -247,7 +247,7 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), "foo qux");
+        let result = get_command(temp_file.path(), "foo qux".split_whitespace().collect());
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandContentInvalid(InvalidContentReason::NotTomlTable(
@@ -275,7 +275,7 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), "foo");
+        let result = get_command(temp_file.path(), "foo".split_whitespace().collect());
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandContentInvalid(InvalidContentReason::NotTomlString(
