@@ -1,6 +1,11 @@
 mod command_parser;
 
-use std::{env, path::Path, process::Command};
+use std::{
+    env,
+    os::unix::process::ExitStatusExt,
+    path::Path,
+    process::{Command, ExitStatus, Stdio},
+};
 
 use command_parser::{get_command, CommandParseError};
 
@@ -21,18 +26,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         });
     let path: &Path = path.as_path();
-    command_runner(path, command).or_disp_and_die();
-    Ok(())
+    let status = command_runner(path, command).or_disp_and_die();
+    let exit_code = match status.code() {
+        Some(code) => code,
+        None => match status.signal() {
+            Some(signal) => 128 + signal,
+            None => {
+                panic!("Unknown exit status {:?}", status);
+            }
+        },
+    };
+    std::process::exit(exit_code);
 }
 
-fn command_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseError> {
+fn command_runner(path: &Path, command: Vec<&str>) -> Result<ExitStatus, CommandParseError> {
     let exec_command = get_command(path, command)?;
-    let command_output = Command::new("sh").arg("-c").arg(exec_command).output()?;
-    if command_output.status.success() {
-        let stdout = String::from_utf8_lossy(&command_output.stdout);
-        print!("{}", stdout);
-    }
-    Ok(())
+    let mut proc = Command::new("sh")
+        .arg("-c")
+        .arg(exec_command)
+        .stdout(Stdio::inherit())
+        .stdin(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()?;
+    let status = proc.wait()?;
+    Ok(status)
 }
 
 trait OrDispAndDie<T, F> {
