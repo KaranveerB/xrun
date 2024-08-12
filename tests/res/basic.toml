@@ -1,3 +1,0 @@
-[subcommand1.command1]
-desc = "subcommand1.command1 description"
-command = "notify-send worked && echo \"it does work\""
