@@ -108,6 +108,14 @@ impl From<InvalidContentReason> for CommandParseError {
     }
 }
 
+/// Pair of sub(command) name and descriptions if defined for usage when displaying help
+/// information.
+///
+/// * `String` subcommand name or `None` for the specified command.
+/// * `String` sub(command) description if defined.
+#[derive(Debug)]
+pub(crate) struct HelpPair(Option<String>, Option<String>);
+
 /// Creates of a table of the `toml_str` toml data.
 ///
 /// * `toml_str` - The toml to parse.
@@ -125,21 +133,75 @@ pub(crate) fn toml_to_map(
 /// * `path` - The path to the .toml file of the base command file.
 /// * `command` - The specified command to retrieve the action of.
 ///
-/// returns - The command action if the command is present, or the error that occurred while retrieving the command action.
+/// returns - The command action if the command is present, or the error that occurred while
+/// retrieving the command action.
 pub(crate) fn get_command(path: &Path, command: Vec<&str>) -> Result<String, CommandParseError> {
+    let toml_data = get_command_toml(path, &command)?;
+    match toml_data.get("command") {
+        Some(exec_cmd) => match exec_cmd.as_str() {
+            Some(exec_cmd) => Ok(exec_cmd.to_string()),
+            None => Err(CommandParseError::CommandContentInvalid(
+                InvalidContentReason::NotTomlString("command".to_string(), exec_cmd.to_owned()),
+            )),
+        },
+        None => Err(CommandParseError::CommandContentInvalid(
+            InvalidContentReason::MissingKey("command".to_string()),
+        )),
+    }
+}
+
+/// Parses a .toml file and extracts the help data
+///
+/// * `path` - The path to the .toml file of the base command file.
+/// * `command` - The specified command to retrieve the action of.
+///
+/// returns - The command action if the command is present, or the error that occurred while
+/// retrieving the command action.
+pub(crate) fn get_command_help(
+    path: &Path,
+    command: Vec<&str>,
+) -> Result<Vec<HelpPair>, CommandParseError> {
+    let mut help_pairs: Vec<HelpPair> = vec![];
+    let toml_data = get_command_toml(path, &command)?;
+    if let Some(desc) = toml_data.get("description").and_then(|s| s.as_str()) {
+        help_pairs.push(HelpPair(None, Some(desc.to_owned())))
+    } else {
+        help_pairs.push(HelpPair(None, None));
+    }
+
+    for (k, v) in &toml_data {
+        if k != "description" && k != "command" {
+            if let Some(desc) = v.get("description").and_then(|s| s.as_str()) {
+                help_pairs.push(HelpPair(Some(k.to_owned()), Some(desc.to_owned())))
+            } else {
+                help_pairs.push(HelpPair(Some(k.to_owned()), None));
+            }
+        }
+    }
+    Ok(help_pairs)
+}
+
+/// Parses a .toml file and extracts the toml table of the specified
+///
+/// * `path` - The path to the .toml file of the base command file.
+/// * `command` - The specified command to retrieve the action of.
+///
+/// returns - The toml table of the (sub)command if it is present, or the error that occurred while
+/// retrieving the command action.
+fn get_command_toml(path: &Path, command: &Vec<&str>) -> Result<Table, CommandParseError> {
     let toml_str = &fs::read_to_string(path)?;
     let mut toml_data = toml_to_map(toml_str)?;
     let mut command_not_found = false;
     let mut error_string: String = Default::default();
     for token in command {
         if !command_not_found {
-            match toml_data.get(token) {
+            match toml_data.get(*token) {
                 Some(Value::Table(next_table)) => {
                     toml_data = next_table.to_owned();
                 }
                 Some(value) => {
                     return Err(CommandParseError::CommandContentInvalid(
-                        InvalidContentReason::NotTomlTable(token.to_owned(), value.to_owned()),
+                        InvalidContentReason::NotTomlTable(token.to_string(), value.to_owned()),
                     ));
                 }
                 None => {
@@ -155,17 +217,7 @@ pub(crate) fn get_command(path: &Path, command: Vec<&str>) -> Result<String, Com
     if command_not_found {
         Err(CommandParseError::CommandNotFoundError(error_string))
     } else {
-        match toml_data.get("command") {
-            Some(exec_cmd) => match exec_cmd.as_str() {
-                Some(exec_cmd) => Ok(exec_cmd.to_string()),
-                None => Err(CommandParseError::CommandContentInvalid(
-                    InvalidContentReason::NotTomlString("command".to_string(), exec_cmd.to_owned()),
-                )),
-            },
-            None => Err(CommandParseError::CommandContentInvalid(
-                InvalidContentReason::MissingKey("command".to_string()),
-            )),
-        }
+        Ok(toml_data)
     }
 }
 
@@ -180,8 +232,9 @@ mod tests {
 
     const TOML_COMMAND_DATA: &[u8] = r#"
             [foo]
-            bar = { command = "bar exec" }
+            bar = { command = "bar exec", description = "bar desc" }
             qux = "quux"
+            description = "foo desc"
             command = { }
             [baz]
         "#
@@ -306,6 +359,33 @@ mod tests {
                 "Expected wrapped `InvalidContentReason::NotTomlString`, but got {:?}",
                 err
             ),
+        }
+    }
+
+    #[test]
+    fn test_get_command_help() {
+        let temp_file = NamedTempFile::new().unwrap();
+        temp_file
+            .reopen()
+            .unwrap()
+            .write_all(TOML_COMMAND_DATA)
+            .unwrap();
+        let result = get_command_help(temp_file.path(), "foo".split_whitespace().collect());
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        if let [foo, bar, qux] = &result[..] {
+            assert_eq!(foo.0, None);
+            assert_eq!(foo.1, Some("foo desc".to_string()));
+            assert_eq!(bar.0, Some("bar".to_string()));
+            assert_eq!(bar.1, Some("bar desc".to_string()));
+            assert_eq!(qux.0, Some("qux".to_string()));
+            assert_eq!(qux.1, None);
+        } else {
+            panic!(
+                "Too many help pairs. Expected 3 but got {}\nData: {:?}",
+                result.len(),
+                result
+            );
         }
     }
 }
