@@ -79,7 +79,7 @@ impl std::fmt::Display for CommandParseError {
             CommandParseError::IoError(err) => write!(f, "{}", err),
             CommandParseError::TomlDeError(err) => write!(f, "TOML parse error - {}", err),
             CommandParseError::CommandNotFoundError(err) => {
-                write!(f, "Command `{}` not found)", err)
+                write!(f, "Command `{}` not found", err)
             }
             CommandParseError::CommandContentInvalid(err) => {
                 write!(f, "Command content invalid - {}", err)
