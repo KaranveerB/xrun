@@ -163,15 +163,15 @@ pub(crate) fn get_command_help(
 ) -> Result<Vec<HelpPair>, CommandParseError> {
     let mut help_pairs: Vec<HelpPair> = vec![];
     let toml_data = get_command_toml(path, &command)?;
-    if let Some(desc) = toml_data.get("description").and_then(|s| s.as_str()) {
+    if let Some(desc) = toml_data.get("desc").and_then(|s| s.as_str()) {
         help_pairs.push(HelpPair(None, Some(desc.to_owned())))
     } else {
         help_pairs.push(HelpPair(None, None));
     }
 
     for (k, v) in &toml_data {
-        if k != "description" && k != "command" {
-            if let Some(desc) = v.get("description").and_then(|s| s.as_str()) {
+        if k != "desc" && k != "command" {
+            if let Some(desc) = v.get("desc").and_then(|s| s.as_str()) {
                 help_pairs.push(HelpPair(Some(k.to_owned()), Some(desc.to_owned())))
             } else {
                 help_pairs.push(HelpPair(Some(k.to_owned()), None));
@@ -232,9 +232,9 @@ mod tests {
 
     const TOML_COMMAND_DATA: &[u8] = r#"
             [foo]
-            bar = { command = "bar exec", description = "bar desc" }
+            bar = { command = "bar exec", desc = "bar desc" }
             qux = "quux"
-            description = "foo desc"
+            desc = "foo desc"
             command = { }
             [baz]
         "#
