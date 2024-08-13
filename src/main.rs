@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    if command.is_empty() && action == Action::Help {
+    if command.is_empty() && action != Action::Help {
         eprintln!("Error: No command provided");
         std::process::exit(1);
     }
