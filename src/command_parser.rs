@@ -150,13 +150,14 @@ pub(crate) fn get_command(path: &Path, command: &Vec<&str>) -> Result<String, Co
     }
 }
 
-/// Parses a .toml file and extracts the help data
+/// Parses a .toml file and extracts help data
 ///
 /// * `path` - The path to the .toml file of the base command file.
 /// * `command` - The specified command to retrieve the action of.
 ///
-/// returns - The command action if the command is present, or the error that occurred while
-/// retrieving the command action.
+/// returns - Pairs of (sub)commands' and it's (sub)commands', along with their description if
+/// present, or the error that occurred while retrieving the command. The help pair with name
+/// `None` represents `command` and will always be present, even if it contains no description.
 pub(crate) fn get_command_help(
     path: &Path,
     command: &Vec<&str>,
