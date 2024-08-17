@@ -84,17 +84,27 @@ fn help_runner(
     command: Vec<&str>,
 ) -> Result<(), CommandParseError> {
     let help_pairs = get_command_help(path, &command)?;
-    print!("Usage: {} ", executable_name);
+    print!("usage: {}", executable_name);
     for command in command {
-        print!("{} ", command);
+        print!(" {}", command);
     }
-    println!("[command]\n\ncommands:");
-    for HelpPair(cmd, desc) in help_pairs {
-        match (cmd, desc) {
-            (Some(cmd), Some(desc)) => println!("  {}: {}", cmd, desc),
-            (Some(cmd), None) => println!("  {}", cmd),
-            (None, Some(desc)) => println!("{}", desc),
-            (None, None) => {}
+    if help_pairs.len() > 1 {
+        print!(" [command]");
+    }
+    let base_command = help_pairs.iter().find(|e| e.0.is_none());
+    if let Some(help_pair) = base_command {
+        if let Some(desc) = &help_pair.1 {
+            println!("\n{}", desc);
+        }
+    }
+    if help_pairs.len() > 1 {
+        println!("\ncommands:");
+        for HelpPair(cmd, desc) in help_pairs {
+            match (cmd, desc) {
+                (Some(cmd), Some(desc)) => println!("    {}: {}", cmd, desc),
+                (Some(cmd), None) => println!("    {}", cmd),
+                (None, _) => {} // already shown
+            }
         }
     }
     std::process::exit(0)
