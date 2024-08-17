@@ -113,7 +113,7 @@ impl From<InvalidContentReason> for CommandParseError {
 ///
 /// * `String` subcommand name or `None` for the specified command.
 /// * `String` sub(command) description if defined.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct HelpPair(pub Option<String>, pub Option<String>);
 
 /// Creates of a table of the `toml_str` toml data.
@@ -362,30 +362,36 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_get_command_help() {
+    // TODO: Fix test cases being a bit haphazard and very ugly.
+    // Likely start providing separate configs for each instead of trying to hammer a single config
+    // into doing it all.
+    #[test_case("foo", vec![
+        (None, Some("foo desc".to_string())),
+        (Some("bar".to_string()),Some("bar desc".to_string())),
+        (Some("qux".to_string()), None)
+    ]; "parent and child")]
+    #[test_case("foo bar", vec![(None, Some("bar desc".to_string()))]; "parent only")]
+    #[test_case("", vec![(None, None),(Some("foo".to_string()),Some("foo desc".to_string())),(Some("baz".to_string()), None)]; "children only")]
+    #[test_case("baz", vec![(None, None)]; "empty")]
+    fn test_get_command_help(command: &str, expected: Vec<(Option<String>, Option<String>)>) {
         let temp_file = NamedTempFile::new().unwrap();
         temp_file
             .reopen()
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command_help(temp_file.path(), &"foo".split_whitespace().collect());
+        let result = get_command_help(
+            temp_file.path(),
+            &command.split_whitespace().collect::<Vec<&str>>(),
+        );
+
         assert!(result.is_ok());
         let result = result.unwrap();
-        if let [foo, bar, qux] = &result[..] {
-            assert_eq!(foo.0, None);
-            assert_eq!(foo.1, Some("foo desc".to_string()));
-            assert_eq!(bar.0, Some("bar".to_string()));
-            assert_eq!(bar.1, Some("bar desc".to_string()));
-            assert_eq!(qux.0, Some("qux".to_string()));
-            assert_eq!(qux.1, None);
-        } else {
-            panic!(
-                "Too many help pairs. Expected 3 but got {}\nData: {:?}",
-                result.len(),
-                result
-            );
+
+        assert_eq!(result.len(), expected.len());
+
+        for (expected_key, expected_val) in expected {
+            assert!(result.contains(&HelpPair(expected_key.to_owned(), expected_val.to_owned())))
         }
     }
 }
