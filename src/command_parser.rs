@@ -124,7 +124,7 @@ pub(crate) struct HelpPair(pub Option<String>, pub Option<String>);
 pub(crate) fn toml_to_map(
     toml_str: &str,
 ) -> Result<toml::map::Map<String, toml::Value>, CommandParseError> {
-    let toml_data: Table = toml::from_str(&toml_str)?;
+    let toml_data: Table = toml::from_str(toml_str)?;
     Ok(toml_data)
 }
 
@@ -136,7 +136,7 @@ pub(crate) fn toml_to_map(
 /// returns - The command action if the command is present, or the error that occurred while
 /// retrieving the command action.
 pub(crate) fn get_command(path: &Path, command: &Vec<&str>) -> Result<String, CommandParseError> {
-    let toml_data = get_command_toml(path, &command)?;
+    let toml_data = get_command_toml(path, command)?;
     match toml_data.get("command") {
         Some(exec_cmd) => match exec_cmd.as_str() {
             Some(exec_cmd) => Ok(exec_cmd.to_string()),
@@ -163,7 +163,7 @@ pub(crate) fn get_command_help(
     command: &Vec<&str>,
 ) -> Result<Vec<HelpPair>, CommandParseError> {
     let mut help_pairs: Vec<HelpPair> = vec![];
-    let toml_data = get_command_toml(path, &command)?;
+    let toml_data = get_command_toml(path, command)?;
     if let Some(desc) = toml_data.get("desc").and_then(|s| s.as_str()) {
         help_pairs.push(HelpPair(None, Some(desc.to_owned())))
     } else {
