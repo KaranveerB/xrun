@@ -216,6 +216,15 @@ fn get_command_toml(path: &Path, command: &Vec<&str>) -> Result<Table, CommandPa
         }
     }
     if command_not_found {
+        // TODO: Improve error messages here.
+        // If the command is 'a b c' and 'c' doesn't exist, we currently show
+        //    `Error: command 'c' not found.`
+        // but this is more confusing than the issue it tries to avoid. Something like
+        //    `Error: command 'c' in 'a b' not found.`
+        // or something like (but not exactly)
+        //    `Error: command 'c' not found but parent 'a b' found.`
+        // Whatever is chosen should be tested properly because there isn't always a parent in the
+        // command.
         Err(CommandParseError::CommandNotFoundError(error_string))
     } else {
         Ok(toml_data)
