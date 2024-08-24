@@ -76,7 +76,7 @@ fn test_help_subcommand(basic_cmd: TestSetup) {
         "    c1: c1 desc\n",
         "    c2\n",
     );
-    test_cmd(basic_cmd, "s --help", stdout, "", 0)
+    test_cmd(basic_cmd, "s --help", stdout, "", 0);
 }
 
 /// Test help for a subcommand with a description and child commands.
@@ -95,19 +95,19 @@ fn test_help_subcommand_no_desc() {
         "    c2\n",
     );
     let test_setup = create_test_setup(toml_command_data);
-    test_cmd(test_setup, "s --help", stdout, "", 0)
+    test_cmd(test_setup, "s --help", stdout, "", 0);
 }
 
 #[rstest]
 fn test_help_command(basic_cmd: TestSetup) {
     let stdout = concat!("usage: srun s c1\n", "c1 desc\n");
-    test_cmd(basic_cmd, "s c1 --help", stdout, "", 0)
+    test_cmd(basic_cmd, "s c1 --help", stdout, "", 0);
 }
 
 #[rstest]
 fn test_help_command_no_desc(basic_cmd: TestSetup) {
     let stdout = "usage: srun s c2\n";
-    test_cmd(basic_cmd, "s c2 --help", stdout, "", 0)
+    test_cmd(basic_cmd, "s c2 --help", stdout, "", 0);
 }
 
 #[rstest]
