@@ -15,12 +15,12 @@ enum Action {
     Help,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
+const PROG_NAME: &str = "srun";
 
-    let executable_name = args.first().unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().skip(1).collect();
     // TODO: This is not robust enough for flags that also take an arg
-    let (options, command): (Vec<_>, Vec<_>) = args[1..]
+    let (options, command): (Vec<_>, Vec<_>) = args
         .iter()
         .map(|s| s.as_str())
         .partition(|&s| s.starts_with('-'));
@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path: &Path = path.as_path();
     match action {
         Action::Exec => command_runner(path, command).or_disp_and_die(),
-        Action::Help => help_runner(executable_name, path, command).or_disp_and_die(),
+        Action::Help => help_runner(path, command).or_disp_and_die(),
     }
     unreachable!()
 }
@@ -78,27 +78,27 @@ fn command_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseErr
     std::process::exit(exit_code);
 }
 
-fn help_runner(
-    executable_name: &str,
-    path: &Path,
-    command: Vec<&str>,
-) -> Result<(), CommandParseError> {
+fn help_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseError> {
     let help_pairs = get_command_help(path, &command)?;
-    print!("usage: {}", executable_name);
+    print!("usage: {}", PROG_NAME);
     for command in command {
         print!(" {}", command);
     }
     if help_pairs.len() > 1 {
         print!(" [command]");
     }
+    println!();
     let base_command = help_pairs.iter().find(|e| e.0.is_none());
     if let Some(help_pair) = base_command {
         if let Some(desc) = &help_pair.1 {
-            println!("\n{}", desc);
+            println!("{}", desc);
+            if help_pairs.len() > 1 {
+                println!();
+            }
         }
     }
     if help_pairs.len() > 1 {
-        println!("\ncommands:");
+        println!("commands:");
         for HelpPair(cmd, desc) in help_pairs {
             match (cmd, desc) {
                 (Some(cmd), Some(desc)) => println!("    {}: {}", cmd, desc),
