@@ -8,8 +8,9 @@ use tempfile::TempDir;
 
 const BASIC_TOML_COMMAND_DATA: &[u8] = r#"
     [s]
-    c1 = { command = "echo c1 ran", desc = "run c1"}
-    c2 = { command = "echo c2 ran", desc = "run c2"}
+    desc = "s desc"
+    c1 = { command = "echo c1 ran", desc = "c1 desc" }
+    c2 = { command = "echo c2 ran" }
 "#
 .as_bytes();
 
@@ -53,13 +54,70 @@ fn test_exec_success(basic_cmd: TestSetup) {
 }
 
 #[rstest]
-fn test_exec_subcommand_dne(mut basic_cmd: TestSetup) {
-    let assert = basic_cmd.cmd.args("dne c1".split_whitespace()).assert();
-    assert.failure().code(1).stdout("").stderr("Error: Command 'dne c1' not found\n");
+fn test_exec_subcommand_dne(basic_cmd: TestSetup) {
+    let stderr = "Error: Command 'dne c1' not found\n";
+    test_cmd(basic_cmd, "dne c1", "", stderr, 1);
 }
 
 #[rstest]
-fn test_exec_command_dne(mut basic_cmd: TestSetup) {
-    let assert = basic_cmd.cmd.args("s dne".split_whitespace()).assert();
-    assert.failure().code(1).stdout("").stderr("Error: Command 'dne' not found\n");
+fn test_exec_command_dne(basic_cmd: TestSetup) {
+    let stderr = "Error: Command 'dne' not found\n";
+    test_cmd(basic_cmd, "s dne", "", stderr, 1);
+}
+
+/// Test help for a subcommand with a description and child commands.
+#[rstest]
+fn test_help_subcommand(basic_cmd: TestSetup) {
+    let stdout = concat!(
+        "usage: srun s [command]\n",
+        "s desc\n",
+        "\n",
+        "commands:\n",
+        "    c1: c1 desc\n",
+        "    c2\n",
+    );
+    test_cmd(basic_cmd, "s --help", stdout, "", 0)
+}
+
+/// Test help for a subcommand with a description and child commands.
+#[test]
+fn test_help_subcommand_no_desc() {
+    let toml_command_data: &[u8] = r#"
+        [s]
+        c1 = { command = "echo c1 ran", desc = "c1 desc" }
+        c2 = { command = "echo c2 ran" }
+    "#
+    .as_bytes();
+    let stdout = concat!(
+        "usage: srun s [command]\n",
+        "commands:\n",
+        "    c1: c1 desc\n",
+        "    c2\n",
+    );
+    let test_setup = create_test_setup(toml_command_data);
+    test_cmd(test_setup, "s --help", stdout, "", 0)
+}
+
+#[rstest]
+fn test_help_command(basic_cmd: TestSetup) {
+    let stdout = concat!("usage: srun s c1\n", "c1 desc\n");
+    test_cmd(basic_cmd, "s c1 --help", stdout, "", 0)
+}
+
+#[rstest]
+fn test_help_command_no_desc(basic_cmd: TestSetup) {
+    let stdout = "usage: srun s c2\n";
+    test_cmd(basic_cmd, "s c2 --help", stdout, "", 0)
+}
+
+#[rstest]
+fn test_help_subcommand_dne(basic_cmd: TestSetup) {
+    let stderr = "Error: Command 'dne dne' not found\n";
+    test_cmd(basic_cmd, "dne dne --help", "", stderr, 1);
+}
+
+#[rstest]
+fn test_help_command_dne(basic_cmd: TestSetup) {
+    let stderr = "Error: Command 'dne' not found\n";
+    test_cmd(basic_cmd, "s dne --help", "", stderr, 1);
 }
