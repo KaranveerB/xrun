@@ -65,6 +65,37 @@ fn test_exec_command_dne(basic_cmd: TestSetup) {
     test_cmd(basic_cmd, "s dne", "", stderr, 1);
 }
 
+#[test]
+fn test_exec_passthrough_stderr() {
+    let toml_command_data = r#"c = { command = ">&2 echo 'foo'" }"#.as_bytes();
+    let stderr = "foo\n";
+    let test_setup = create_test_setup(toml_command_data);
+    test_cmd(test_setup, "c", "", stderr, 0);
+}
+
+#[test]
+fn test_exec_passthrough_ret_code() {
+    let toml_command_data = r#"c = { command = "exit 42" }"#.as_bytes();
+    let test_setup = create_test_setup(toml_command_data);
+    test_cmd(test_setup, "c", "", "", 42);
+}
+
+#[test]
+fn test_exec_passthrough_signal() {
+    let toml_command_data = r#"c = { command = "kill -s TERM $$" }"#.as_bytes();
+    let test_setup = create_test_setup(toml_command_data);
+    test_cmd(test_setup, "c", "", "", 15 + 128);
+}
+
+#[test]
+fn test_exec_passthrough_stdin() {
+    let toml_command_data = r#"c = { command = "read line; echo $line" }"#.as_bytes();
+    let mut test_setup = create_test_setup(toml_command_data);
+    let stdout = "foo\n";
+    let assert = test_setup.cmd.arg("c").write_stdin("foo").assert();
+    let _ = assert.success().stdout(stdout).stderr("");
+}
+
 /// Test help for a subcommand with a description and child commands.
 #[rstest]
 fn test_help_subcommand(basic_cmd: TestSetup) {
