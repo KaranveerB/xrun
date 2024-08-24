@@ -6,7 +6,7 @@ use std::fs;
 use rstest::{fixture, rstest};
 use tempfile::TempDir;
 
-const TOML_COMMAND_DATA: &[u8] = r#"
+const BASIC_TOML_COMMAND_DATA: &[u8] = r#"
     [s]
     c1 = { command = "echo c1 ran", desc = "run c1"}
     c2 = { command = "echo c2 ran", desc = "run c2"}
@@ -19,13 +19,10 @@ struct TestSetup {
     cmd: assert_cmd::Command,
 }
 
-// TODO: This works fine when just using `TOML_COMMAND_DATA` and all other configs would need their
-// own fixture or repeated code. This is probably fine, but try to find a better way to do this.
-#[fixture]
-fn basic_cmd() -> TestSetup {
+fn create_test_setup(config: &[u8]) -> TestSetup {
     let tmp_dir = TempDir::new().unwrap();
     let _ = fs::create_dir(tmp_dir.path().join("srun"));
-    let _ = fs::write(tmp_dir.path().join("srun/command.toml"), TOML_COMMAND_DATA);
+    let _ = fs::write(tmp_dir.path().join("srun/command.toml"), config);
     let mut cmd = Command::cargo_bin("srun").unwrap();
     cmd.env("XDG_CONFIG_HOME", tmp_dir.path());
 
@@ -35,10 +32,24 @@ fn basic_cmd() -> TestSetup {
     }
 }
 
+// TODO: This works fine when just using `TOML_COMMAND_DATA` and all other configs would need their
+// own fixture or repeated code. This is probably fine, but try to find a better way to do this.
+#[fixture]
+fn basic_cmd() -> TestSetup {
+    create_test_setup(BASIC_TOML_COMMAND_DATA)
+}
+
+fn test_cmd(mut test_setup: TestSetup, arg_str: &str, stdout: &str, stderr: &str, ret: i32) {
+    let assert = test_setup.cmd.args(arg_str.split_whitespace()).assert();
+    assert
+        .code(ret)
+        .stdout(stdout.to_owned())
+        .stderr(stderr.to_owned());
+}
+
 #[rstest]
-fn test_exec_success(mut basic_cmd: TestSetup) {
-    let assert = basic_cmd.cmd.args("s c1".split_whitespace()).assert();
-    assert.success().stdout("c1 ran\n");
+fn test_exec_success(basic_cmd: TestSetup) {
+    test_cmd(basic_cmd, "s c1", "c1 ran\n", "", 0);
 }
 
 #[rstest]
