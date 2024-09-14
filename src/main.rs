@@ -58,13 +58,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn command_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseError> {
     let exec_command = get_command(path, &command)?;
-    let mut proc = Command::new("sh")
-        .arg("-c")
+    let shell = env::var("SHELL").unwrap_or("sh".to_string());
+
+    let mut command = &mut Command::new(&shell);
+
+    if shell.ends_with("bash") || shell.ends_with("zsh") || shell.ends_with("fish") {
+        // Many programs use isatty for things like whether to add colours. Make sure we pass
+        // interactive is isatty passes and we get as close to real shell aliases as possible.
+        command = command.arg("-i");
+    };
+
+    command = command
+        .arg("-c") // Assume whatever shell is used supports -c
         .arg(exec_command)
         .stdout(Stdio::inherit())
         .stdin(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()?;
+        .stderr(Stdio::inherit());
+
+    let mut proc = command.spawn()?;
     let status = proc.wait()?;
     let exit_code = match status.code() {
         Some(code) => code,

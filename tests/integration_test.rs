@@ -26,6 +26,7 @@ fn create_test_setup(config: &[u8]) -> TestSetup {
     let _ = fs::write(tmp_dir.path().join("srun/command.toml"), config);
     let mut cmd = Command::cargo_bin("srun").unwrap();
     cmd.env("XDG_CONFIG_HOME", tmp_dir.path());
+    cmd.env("SHELL", "sh");
 
     TestSetup {
         _tmp_dir: tmp_dir,
