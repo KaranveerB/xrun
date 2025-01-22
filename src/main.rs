@@ -52,18 +52,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     let path: &Path = path.as_path();
     match action {
-        Action::Exec => command_runner(path, command, passthrough).or_disp_and_die(),
-        Action::Help => help_runner(path, command).or_disp_and_die(),
+        Action::Exec => command_runner(path, &command, passthrough).or_disp_and_die(),
+        Action::Help => help_runner(path, &command).or_disp_and_die(),
     }
     unreachable!()
 }
 
 fn command_runner(
     path: &Path,
-    command: Vec<&str>,
+    command: &[&str],
     passthrough: bool,
 ) -> Result<(), CommandParseError> {
-    let exec_command = get_command(path, &command)?;
+    let exec_command = get_command(path, command)?;
     if passthrough {
         println!("{}", exec_command);
         // Arbitrary exit code to indicate a shell command was returned.
@@ -101,8 +101,8 @@ fn command_runner(
     }
 }
 
-fn help_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseError> {
-    let help_pairs = get_command_help(path, &command)?;
+fn help_runner(path: &Path, command: &[&str]) -> Result<(), CommandParseError> {
+    let help_pairs = get_command_help(path, command)?;
     print!("usage: {}", PROG_NAME);
     for command in command {
         print!(" {}", command);
