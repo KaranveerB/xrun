@@ -26,9 +26,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .partition(|&s| s.starts_with('-'));
 
     let mut action = Action::Exec;
+    let mut passthrough = false;
     for option in options {
         match option {
             "--help" | "-h" => action = Action::Help,
+            "--passthrough" | "-p" => passthrough = true,
             _ => {
                 eprintln!("Unknown flag: {}", option);
                 std::process::exit(1)
@@ -50,43 +52,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     let path: &Path = path.as_path();
     match action {
-        Action::Exec => command_runner(path, command).or_disp_and_die(),
+        Action::Exec => command_runner(path, command, passthrough).or_disp_and_die(),
         Action::Help => help_runner(path, command).or_disp_and_die(),
     }
     unreachable!()
 }
 
-fn command_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseError> {
+fn command_runner(
+    path: &Path,
+    command: Vec<&str>,
+    passthrough: bool,
+) -> Result<(), CommandParseError> {
     let exec_command = get_command(path, &command)?;
-    let shell = env::var("SHELL").unwrap_or("sh".to_string());
+    if passthrough {
+        println!("{}", exec_command);
+        // Arbitrary exit code to indicate a shell command was returned.
+        std::process::exit(125);
+    } else {
+        let shell = env::var("SHELL").unwrap_or("sh".to_string());
 
-    let mut command = &mut Command::new(&shell);
+        let mut command = &mut Command::new(&shell);
 
-    if shell.ends_with("bash") || shell.ends_with("zsh") || shell.ends_with("fish") {
-        // Many programs use isatty for things like whether to add colours. Make sure we pass
-        // interactive is isatty passes and we get as close to real shell aliases as possible.
-        command = command.arg("-i");
-    };
+        if shell.ends_with("bash") || shell.ends_with("zsh") || shell.ends_with("fish") {
+            // Many programs use isatty for things like whether to add colours. Make sure we pass
+            // interactive is isatty passes and we get as close to real shell aliases as possible.
+            command = command.arg("-i");
+        };
 
-    command = command
-        .arg("-c") // Assume whatever shell is used supports -c
-        .arg(exec_command)
-        .stdout(Stdio::inherit())
-        .stdin(Stdio::inherit())
-        .stderr(Stdio::inherit());
+        command = command
+            .arg("-c") // Assume whatever shell is used supports -c
+            .arg(exec_command)
+            .stdout(Stdio::inherit())
+            .stdin(Stdio::inherit())
+            .stderr(Stdio::inherit());
 
-    let mut proc = command.spawn()?;
-    let status = proc.wait()?;
-    let exit_code = match status.code() {
-        Some(code) => code,
-        None => match status.signal() {
-            Some(signal) => 128 + signal,
-            None => {
-                panic!("Unknown exit status {:?}", status);
-            }
-        },
-    };
-    std::process::exit(exit_code);
+        let mut proc = command.spawn()?;
+        let status = proc.wait()?;
+        let exit_code = match status.code() {
+            Some(code) => code,
+            None => match status.signal() {
+                Some(signal) => 128 + signal,
+                None => {
+                    panic!("Unknown exit status {:?}", status);
+                }
+            },
+        };
+        std::process::exit(exit_code);
+    }
 }
 
 fn help_runner(path: &Path, command: Vec<&str>) -> Result<(), CommandParseError> {
