@@ -54,3 +54,24 @@ commands:
     casual: says sup
     kind: says hi
 ```
+
+## Passthrough
+Using the `--passthrough` flag prints the shell commands to stdout.
+This can be used to run the command directly in the current shell and avoid any
+weirdness/performance hits of spawning a new shell as a child of `srun`.
+
+An exit code of `125` is returned if a shell command was returned.
+This can be used in bash like shells (or whatever equivalent for your shell) as
+follows:
+
+```bash
+function srun() {
+  output=$("$@" 2>&1)
+  if [ $? -eq 125 ]; then
+    eval "$output"
+  else
+    echo "$output"
+  fi
+}
+```
+
