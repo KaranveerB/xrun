@@ -67,7 +67,7 @@ fn test_exec_command_dne(basic_cmd: TestSetup) {
 }
 
 #[test]
-fn test_exec_passthrough_stderr() {
+fn test_exec_stderr() {
     let toml_command_data = r#"c = { command = ">&2 echo 'foo'" }"#.as_bytes();
     let stderr = "foo\n";
     let test_setup = create_test_setup(toml_command_data);
@@ -75,21 +75,21 @@ fn test_exec_passthrough_stderr() {
 }
 
 #[test]
-fn test_exec_passthrough_ret_code() {
+fn test_exec_ret_code() {
     let toml_command_data = r#"c = { command = "exit 42" }"#.as_bytes();
     let test_setup = create_test_setup(toml_command_data);
     test_cmd(test_setup, "c", "", "", 42);
 }
 
 #[test]
-fn test_exec_passthrough_signal() {
+fn test_exec_signal() {
     let toml_command_data = r#"c = { command = "kill -s TERM $$" }"#.as_bytes();
     let test_setup = create_test_setup(toml_command_data);
     test_cmd(test_setup, "c", "", "", 15 + 128);
 }
 
 #[test]
-fn test_exec_passthrough_stdin() {
+fn test_exec_stdin() {
     let toml_command_data = r#"c = { command = "read line; echo $line" }"#.as_bytes();
     let mut test_setup = create_test_setup(toml_command_data);
     let stdout = "foo\n";
