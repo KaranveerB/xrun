@@ -55,15 +55,41 @@ fn test_exec_success(basic_cmd: TestSetup) {
 }
 
 #[rstest]
+fn test_passthrough_exec_success(basic_cmd: TestSetup) {
+    test_cmd(basic_cmd, "--passthrough s c1", "echo c1 ran\n", "", 125);
+}
+
+#[rstest]
+fn test_passthrough_arg_position1(basic_cmd: TestSetup) {
+    test_cmd(basic_cmd, "s --passthrough c1", "echo c1 ran\n", "", 125);
+}
+#[rstest]
+fn test_passthrough_arg_position2(basic_cmd: TestSetup) {
+    test_cmd(basic_cmd, "s c1 --passthrough", "echo c1 ran\n", "", 125);
+}
+
+#[rstest]
 fn test_exec_subcommand_dne(basic_cmd: TestSetup) {
     let stderr = "Error: Command 'dne c1' not found\n";
     test_cmd(basic_cmd, "dne c1", "", stderr, 1);
 }
 
 #[rstest]
+fn test_passthrough_exec_subcommand_dne(basic_cmd: TestSetup) {
+    let stderr = "Error: Command 'dne c1' not found\n";
+    test_cmd(basic_cmd, "--passthrough dne c1", "", stderr, 1);
+}
+
+#[rstest]
 fn test_exec_command_dne(basic_cmd: TestSetup) {
     let stderr = "Error: Command 'dne' not found\n";
     test_cmd(basic_cmd, "s dne", "", stderr, 1);
+}
+
+#[rstest]
+fn test_passthrough_exec_command_dne(basic_cmd: TestSetup) {
+    let stderr = "Error: Command 'dne' not found\n";
+    test_cmd(basic_cmd, "--passthrough s dne", "", stderr, 1);
 }
 
 #[test]
