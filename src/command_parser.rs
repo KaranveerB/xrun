@@ -207,7 +207,7 @@ fn get_command_toml(path: &Path, command: &[&str]) -> Result<Table, CommandParse
                 }
                 None => {
                     command_not_found = true;
-                    error_string += &token;
+                    error_string += token;
                 }
             }
         } else {
@@ -269,7 +269,10 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), &"foo bar".split_whitespace().collect::<Vec<&str>>());
+        let result = get_command(
+            temp_file.path(),
+            &"foo bar".split_whitespace().collect::<Vec<&str>>(),
+        );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "bar exec")
     }
@@ -285,7 +288,10 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), &cmd_str.split_whitespace().collect::<Vec<&str>>());
+        let result = get_command(
+            temp_file.path(),
+            &cmd_str.split_whitespace().collect::<Vec<&str>>(),
+        );
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandNotFoundError(s) => assert_eq!(s, invalid_portion),
@@ -304,7 +310,7 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), &vec!["baz"]);
+        let result = get_command(temp_file.path(), &["baz"]);
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandContentInvalid(InvalidContentReason::MissingKey(key)) => {
@@ -325,7 +331,10 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), &"foo qux".split_whitespace().collect::<Vec<&str>>());
+        let result = get_command(
+            temp_file.path(),
+            &"foo qux".split_whitespace().collect::<Vec<&str>>(),
+        );
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandContentInvalid(InvalidContentReason::NotTomlTable(
@@ -353,7 +362,10 @@ mod tests {
             .unwrap()
             .write_all(TOML_COMMAND_DATA)
             .unwrap();
-        let result = get_command(temp_file.path(), &"foo".split_whitespace().collect::<Vec<&str>>());
+        let result = get_command(
+            temp_file.path(),
+            &"foo".split_whitespace().collect::<Vec<&str>>(),
+        );
         assert!(result.is_err());
         match result.unwrap_err() {
             CommandParseError::CommandContentInvalid(InvalidContentReason::NotTomlString(
