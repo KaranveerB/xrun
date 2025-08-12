@@ -8,6 +8,9 @@ under a subcommand) and a more convenient place to store cool one liners.
 
 This program is in development and many features/changes may be made over time.
 
+See my [dotfiles](https://github.com/KaranveerB/Dotfiles/blob/master/.config/srun/command.toml)
+for a real-world example of its usage.
+
 ## Configuring
 The program reads from `$XDG_CONFIG_HOME/srun/command.toml` for commands. This
 is usually `~/.config/srun/command.toml`.
