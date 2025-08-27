@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("srun")?;
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("srun");
     let path: std::path::PathBuf = xdg_dirs
         .find_config_file("command.toml")
         .unwrap_or_else(|| {
