@@ -391,18 +391,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2ae44ef20feb57a68b23d846850f861394c2e02dc425a50098ae8c90267589"
 
 [[package]]
-name = "srun"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "rstest",
- "tempfile",
- "test-case",
- "toml",
- "xdg",
-]
-
-[[package]]
 name = "syn"
 version = "2.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -648,3 +636,15 @@ name = "xdg"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fb433233f2df9344722454bc7e96465c9d03bff9d77c248f9e7523fe79585b5"
+
+[[package]]
+name = "xrun"
+version = "0.1.0"
+dependencies = [
+ "assert_cmd",
+ "rstest",
+ "tempfile",
+ "test-case",
+ "toml",
+ "xdg",
+]

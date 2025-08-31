@@ -22,9 +22,9 @@ struct TestSetup {
 
 fn create_test_setup(config: &[u8]) -> TestSetup {
     let tmp_dir = TempDir::new().unwrap();
-    let _ = fs::create_dir(tmp_dir.path().join("srun"));
-    let _ = fs::write(tmp_dir.path().join("srun/command.toml"), config);
-    let mut cmd = Command::cargo_bin("srun").unwrap();
+    let _ = fs::create_dir(tmp_dir.path().join("xrun"));
+    let _ = fs::write(tmp_dir.path().join("xrun/command.toml"), config);
+    let mut cmd = Command::cargo_bin("xrun").unwrap();
     cmd.env("XDG_CONFIG_HOME", tmp_dir.path());
     cmd.env("SHELL", "sh");
 
@@ -127,7 +127,7 @@ fn test_exec_stdin() {
 #[rstest]
 fn test_help_subcommand(basic_cmd: TestSetup) {
     let stdout = concat!(
-        "usage: srun s [command]\n",
+        "usage: xrun s [command]\n",
         "s desc\n",
         "\n",
         "commands:\n",
@@ -147,7 +147,7 @@ fn test_help_subcommand_no_desc() {
     "#
     .as_bytes();
     let stdout = concat!(
-        "usage: srun s [command]\n",
+        "usage: xrun s [command]\n",
         "commands:\n",
         "    c1: c1 desc\n",
         "    c2\n",
@@ -158,13 +158,13 @@ fn test_help_subcommand_no_desc() {
 
 #[rstest]
 fn test_help_command(basic_cmd: TestSetup) {
-    let stdout = concat!("usage: srun s c1\n", "c1 desc\n");
+    let stdout = concat!("usage: xrun s c1\n", "c1 desc\n");
     test_cmd(basic_cmd, "s c1 --help", stdout, "", 0);
 }
 
 #[rstest]
 fn test_help_command_no_desc(basic_cmd: TestSetup) {
-    let stdout = "usage: srun s c2\n";
+    let stdout = "usage: xrun s c2\n";
     test_cmd(basic_cmd, "s c2 --help", stdout, "", 0);
 }
 
