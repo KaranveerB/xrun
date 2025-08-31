@@ -15,7 +15,7 @@ enum Action {
     Help,
 }
 
-const PROG_NAME: &str = "srun";
+const PROG_NAME: &str = "xrun";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("srun");
+    let xdg_dirs = xdg::BaseDirectories::with_prefix(PROG_NAME);
     let path: std::path::PathBuf = xdg_dirs
         .find_config_file("command.toml")
         .unwrap_or_else(|| {
