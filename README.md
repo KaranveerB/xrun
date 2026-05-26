@@ -69,7 +69,7 @@ follows:
 
 ```bash
 function xrun() {
-  output=$("$@" 2>&1)
+  output=$(xrun --passthrough "$@" 2>&1)
   if [ $? -eq 125 ]; then
     eval "$output"
   else
